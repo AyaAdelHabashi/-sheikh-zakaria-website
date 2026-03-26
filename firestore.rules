@@ -1,0 +1,193 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: books
+    // Fields: title (string), description (string), category (string), imageUrl (string), pdfUrl (string), createdAt (string)
+    //
+    // Collection: audio
+    // Fields: title (string), description (string), category (string), soundcloudUrl (string), createdAt (string)
+    //
+    // Collection: videos
+    // Fields: title (string), description (string), category (string), youtubeUrl (string), createdAt (string)
+    //
+    // Collection: reflections
+    // Fields: title (string), text (string), createdAt (string)
+    //
+    // Collection: pamphlets
+    // Fields: title (string), description (string), imageUrl (string), pdfUrl (string), createdAt (string)
+    //
+    // Collection: messages
+    // Fields: name (string), email (string), subject (string), message (string), status (string), createdAt (timestamp)
+    //
+    // Collection: users
+    // Fields: role (string), email (string)
+    //
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email == "sondossalah041@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    
+    function isValidString(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+    
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidBook() {
+      return hasRequiredFields(['title', 'description', 'category', 'imageUrl', 'pdfUrl', 'createdAt']) &&
+        hasOnlyAllowedFields(['title', 'description', 'category', 'imageUrl', 'pdfUrl', 'createdAt', 'author']) &&
+        isValidString('title', 1, 200) &&
+        isValidString('description', 1, 5000) &&
+        isValidString('category', 1, 100) &&
+        request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() <= 1000 &&
+        request.resource.data.pdfUrl is string && request.resource.data.pdfUrl.size() <= 1000 &&
+        (!('author' in request.resource.data) || isValidString('author', 1, 200)) &&
+        request.resource.data.createdAt is timestamp;
+    }
+    
+    function isValidAudio() {
+      return hasRequiredFields(['title', 'description', 'category', 'soundcloudUrl', 'createdAt']) &&
+        hasOnlyAllowedFields(['title', 'description', 'category', 'soundcloudUrl', 'createdAt']) &&
+        isValidString('title', 1, 200) &&
+        isValidString('description', 1, 5000) &&
+        isValidString('category', 1, 100) &&
+        isValidString('soundcloudUrl', 1, 1000) &&
+        request.resource.data.createdAt is timestamp;
+    }
+    
+    function isValidVideo() {
+      return hasRequiredFields(['title', 'description', 'category', 'youtubeUrl', 'createdAt']) &&
+        hasOnlyAllowedFields(['title', 'description', 'category', 'youtubeUrl', 'createdAt']) &&
+        isValidString('title', 1, 200) &&
+        isValidString('description', 1, 5000) &&
+        isValidString('category', 1, 100) &&
+        isValidString('youtubeUrl', 1, 1000) &&
+        request.resource.data.createdAt is timestamp;
+    }
+    
+    function isValidReflection() {
+      return hasRequiredFields(['title', 'text', 'createdAt']) &&
+        hasOnlyAllowedFields(['title', 'text', 'createdAt', 'category']) &&
+        isValidString('title', 1, 200) &&
+        isValidString('text', 1, 10000) &&
+        (!('category' in request.resource.data) || isValidString('category', 1, 100)) &&
+        request.resource.data.createdAt is timestamp;
+    }
+    
+    function isValidPamphlet() {
+      return hasRequiredFields(['title', 'description', 'imageUrl', 'pdfUrl', 'createdAt']) &&
+        hasOnlyAllowedFields(['title', 'description', 'imageUrl', 'pdfUrl', 'createdAt']) &&
+        isValidString('title', 1, 200) &&
+        isValidString('description', 1, 5000) &&
+        isValidString('imageUrl', 1, 1000) &&
+        isValidString('pdfUrl', 1, 1000) &&
+        request.resource.data.createdAt is timestamp;
+    }
+    
+    function isValidMessage() {
+      return hasRequiredFields(['name', 'email', 'subject', 'message', 'status', 'createdAt']) &&
+        hasOnlyAllowedFields(['name', 'email', 'subject', 'message', 'status', 'createdAt']) &&
+        isValidString('name', 1, 100) &&
+        isValidString('email', 1, 100) &&
+        isValidString('subject', 1, 200) &&
+        isValidString('message', 1, 5000) &&
+        request.resource.data.status in ['new', 'read', 'archived'] &&
+        request.resource.data.createdAt is timestamp;
+    }
+    
+    function isValidUser() {
+      return hasRequiredFields(['role', 'email']) &&
+        hasOnlyAllowedFields(['role', 'email']) &&
+        isValidString('role', 1, 50) &&
+        isValidString('email', 1, 100);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    
+    match /books/{bookId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidBook();
+      allow update: if isAdmin() && isValidBook() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+    
+    match /audio/{audioId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidAudio();
+      allow update: if isAdmin() && isValidAudio() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+    
+    match /videos/{videoId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidVideo();
+      allow update: if isAdmin() && isValidVideo() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+    
+    match /reflections/{reflectionId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidReflection();
+      allow update: if isAdmin() && isValidReflection() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+    
+    match /pamphlets/{pamphletId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidPamphlet();
+      allow update: if isAdmin() && isValidPamphlet() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+    
+    match /messages/{messageId} {
+      allow read: if isAdmin();
+      allow create: if isValidMessage();
+      allow update: if isAdmin() && isValidMessage() && areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+    
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin() && isValidUser();
+      allow update: if isAdmin() && isValidUser();
+      allow delete: if isAdmin();
+    }
+  }
+}
