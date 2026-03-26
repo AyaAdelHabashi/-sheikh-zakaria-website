@@ -1,22 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&family=Tajawal:wght@200;300;400;500;700;800;900&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&family=Tajawal:wght@200;300;400;500;700;800;900&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap");
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Tajawal", "Cairo", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Amiri", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  
+  --font-serif:
+    "Amiri", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
   --color-emerald-50: #f0fdf4;
   --color-emerald-100: #dcfce7;
   --color-emerald-800: #065f46;
   --color-emerald-900: #064e3b;
   --color-emerald-950: #022c22;
-  
+
   --color-gold-50: #fffbeb;
   --color-gold-100: #fef3c7;
   --color-gold-400: #fbbf24;
   --color-gold-500: #f59e0b;
   --color-gold-600: #d97706;
-  
+
   --color-ivory: #fdfbf7;
 }
 
